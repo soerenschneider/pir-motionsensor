@@ -8,6 +8,7 @@ import argparse
 import logging
 import paho.mqtt.client as mqtt
 
+
 client = None
 args = None
 
@@ -16,23 +17,20 @@ def connect(args):
     """ Connect to the MQTT broker. """
     global client
     client = mqtt.Client(args.id)
-    client.connect(args.host)
 
     if args.user:
         client.username_pw_set(username=args.user, password=args.password)
 
-    client.loop_start()
+    client.connect(args.host)
 
 
-def triggered():
+def triggered(channel):
     """ Callback when the sensor is triggered. """
     data = dict()
     data['client'] = args.id
     data['timestamp'] = datetime.datetime.now().isoformat()
 
-    if args.verbose:
-        logging.debug("Detected motion")
-
+    logging.debug("Detected motion")
     client.publish(args.topic, json.dumps(data), qos=1)
 
 
@@ -45,7 +43,7 @@ def parse():
     parser.add_argument('--host', action="store", required=True)
     parser.add_argument('--user', action="store")
     parser.add_argument('--password', action="store")
-    parser.add_argument('--topic', action="store", default='house/sensors/motion')
+    parser.add_argument('--topic', action="store", default='house/sensors/{}/motion')
     parser.add_argument('--verbose', action="store_true")
     
     return parser.parse_args()
@@ -53,35 +51,40 @@ def parse():
 
 def cleanup():
     """ Cleans up current state nicely. """
-    logging.info("Bye...")
+    logging.warning("Bye...")
     GPIO.cleanup()
     client.loop_stop()
     client.disconnect()
 
 
+def setup_logging(args):
+    """ Sets up the logging. """
+    loglevel = logging.INFO
+    if args.verbose:
+        loglevel = logging.DEBUG
+    logging.basicConfig(level=loglevel, format='%(levelname)s\t %(asctime)s %(message)s')
+
+
 def run(args):
     try:
-        logging.basicConfig(level=logging.DEBUG, format='%(levelname)s\t %(asctime)s %(message)s')
+        setup_logging(args)
 
-        GPIO.setmode(GPIO.BCM)
-        gpio = args.gpio
-
-        # Set pin as input
-        GPIO.setup(gpio, GPIO.IN)
+        args.topic = args.topic.format(args.id)
 
         logging.info("Initializing GPIO")
-        while GPIO.input(gpio) != 0:
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(args.gpio, GPIO.IN)
+        while GPIO.input(args.gpio) != 0:
             time.sleep(0.1)
         logging.info("Done!")
 
         # attach callback to GPIO
-        GPIO.add_event_detect(gpio, GPIO.RISING, callback=triggered)
-        while True:
-            time.sleep(60)
+        GPIO.add_event_detect(args.gpio, GPIO.RISING, callback=triggered)
 
+        # loop
+        client.loop_forever()
     except:
         cleanup()
-
 
 
 if __name__ == '__main__':
