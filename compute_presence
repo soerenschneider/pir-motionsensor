@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+
+from apscheduler.schedulers.background import BackgroundScheduler
+import threading
+import logging
+import argparse
+import json
+import paho.mqtt.client as mqtt
+
+
+args = None
+stash = {}
+GLOBAL_TOPIC = "meta"
+minutes = 6
+client = None
+_lock = threading.Lock()
+
+
+class AtomicCounter:
+    def __init__(self, initial=0):
+        """Initialize a new atomic counter to given initial value (default 0)."""
+        self.value = initial
+        self._lock = threading.Lock()
+
+    def increment(self, num=1):
+        """Atomically increment the counter by num (default 1) and return the
+        new value.
+        """
+        with self._lock:
+            self.value += num
+            return self.value
+
+
+def prepare_sensor(name):
+    logging.debug("Trying to acquire lock for {}".format(name))
+    global _lock
+    with _lock:
+        logging.debug("Acquired lock for {}".format(name))
+        if name not in stash:
+            stash[name] = []
+            stash[name].append(AtomicCounter())
+    logging.debug("Released lock for {}".format(name))
+
+
+def on_message(mosq, obj, msg):
+    data = json.loads(msg.payload)
+    if not "client" in data:
+        return
+
+    client_id = data["client"]
+    prepare_sensor(client_id)
+    stash[client_id][0].increment()
+    stash[GLOBAL_TOPIC][0].increment()
+
+
+def connect(args):
+    """ Connect to the MQTT broker. """
+    global client
+    client = mqtt.Client(args.id)
+
+    if args.user:
+        client.username_pw_set(username=args.user, password=args.password)
+
+    client.connect(args.host)
+    client.subscribe(args.topic.format("+"))
+    client.on_message=on_message
+
+
+def calc_probability(values):
+    n = len(values)
+    p = 0.0
+    for index in range(n):
+        multiplicator = 1-(0.05*index)
+        p += multiplicator * values[index].value
+
+    return min(1., p / minutes)
+
+
+def historize():
+    for client_id in stash:
+        stash[client_id].insert(0, AtomicCounter())
+
+        cnt = 0
+        max_index = min(len(stash[client_id]), minutes+1)
+        for index in range(1, max_index):
+            cnt += stash[client_id][index].value
+
+        if max_index > minutes:
+            del stash[client_id][minutes]
+
+        data = dict()
+        data["client"] = client_id
+        data["probability"] = calc_probability(stash[client_id][1:])
+
+        if args.verbose and cnt > 0:
+            logging.debug(data)
+
+        topic = args.destination.format(client_id)
+        client.publish(topic, json.dumps(data), qos=1)
+
+
+def parse():
+    """ Argparse stuff happens here. """
+    parser = argparse.ArgumentParser(prog='pir-sensor-reader')
+
+    parser.add_argument('--host', action="store", required=True)
+    parser.add_argument('--user', '-u', action="store")
+    parser.add_argument('--password', action="store")
+    parser.add_argument('--topic', '-t', action="store", default='house/sensors/{}/motion')
+    parser.add_argument('--destination', '-d', action="store", default='house/presence/{}')
+    parser.add_argument('--verbose', action="store_true")
+
+    return parser.parse_args()
+
+
+def setup_logging(args):
+    """ Sets up the logging. """
+    loglevel = logging.INFO
+    if args.verbose:
+        loglevel = logging.DEBUG
+    logging.basicConfig(level=loglevel, format='%(levelname)s\t %(asctime)s %(message)s')
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
+
+
+if __name__ == '__main__':
+    args = parse()
+
+    setup_logging(args)
+
+    prepare_sensor(GLOBAL_TOPIC)
+
+    connect(args)
+
+    sched = BackgroundScheduler()
+    sched.add_job(historize, 'interval', seconds=60)
+    sched.start()
+
+    client.loop_forever()
