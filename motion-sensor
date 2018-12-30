@@ -15,10 +15,13 @@ args = None
 
 def connect(args):
     """ Connect to the MQTT broker. """
+    logging.info("Trying to connect to host {} and topic {} using id {}".format(args.host, args.topic, args.id))
+
     global client
     client = mqtt.Client(args.id)
 
     if args.user:
+        logging.info("Connecting as user {}".format(args.user))
         client.username_pw_set(username=args.user, password=args.password)
 
     client.connect(args.host)
