@@ -1,0 +1,13 @@
+[Unit]
+Description=PIR motion sensor
+After=syslog.target network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/motion-sensor
+ExecStart=/usr/local/bin/motion-sensor
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
