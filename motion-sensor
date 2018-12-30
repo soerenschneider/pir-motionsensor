@@ -7,7 +7,7 @@ import json
 import argparse
 import logging
 import paho.mqtt.client as mqtt
-
+import os
 
 client = None
 args = None
@@ -34,15 +34,23 @@ def triggered(channel):
     client.publish(args.topic, json.dumps(data), qos=1)
 
 
+def environ_or_required(key):
+    """ Try to read from environment var before giving up. """
+    if os.environ.get(key):
+        return {'default': os.environ.get(key)}
+    else:
+        return {'required': True}
+
+
 def parse():
     """ Argparse stuff happens here. """
     parser = argparse.ArgumentParser(prog='pir-sensor-reader')
 
-    parser.add_argument('--id', action="store", required=True)
+    parser.add_argument('--id', action="store", **environ_or_required("PIR_ID"))
     parser.add_argument('--gpio', action="store", type=int, default=4)
-    parser.add_argument('--host', action="store", required=True)
-    parser.add_argument('--user', action="store")
-    parser.add_argument('--password', action="store")
+    parser.add_argument('--host', action="store", **environ_or_required("PIR_HOST"))
+    parser.add_argument('--user', action="store", default=os.getenv("PIR_USER"))
+    parser.add_argument('--password', action="store", default=os.getenv("PIR_PASS"))
     parser.add_argument('--topic', action="store", default='house/sensors/{}/motion')
     parser.add_argument('--verbose', action="store_true")
     
