@@ -18,6 +18,7 @@ _lock = threading.Lock()
 
 _registry = None
 _gauge_events = None
+_gauge_probability = None
 _gauge_timestamp = None
 
 
@@ -75,7 +76,7 @@ def initialize_prometheus():
     global _registry
     _registry = CollectorRegistry()
 
-    global _gauge_events, _gauge_timestamp
+    global _gauge_events, _gauge_probability, _gauge_timestamp
     _gauge_events = Gauge('sensors_pir_events', 'Temperature in degrees celsius', ['client'], registry=_registry)
     _gauge_probability = Gauge('sensors_pir_probability', 'Probability', ['client'], registry=_registry)
     _gauge_timestamp = Gauge('sensors_pir_timestamp', 'Timestamp of last measurement', ['client'], registry=_registry)
