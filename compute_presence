@@ -92,7 +92,7 @@ def calc_probability(values):
 
 
 def write_nodeexporter(label, data):
-    _gauge_events.labels(label).set(data["client"])
+    _gauge_events.labels(label).set(data["events"])
     _gauge_probability.labels(label).set(data["probability"])
     _gauge_timestamp.labels(label).set(int(time.time()))
 
