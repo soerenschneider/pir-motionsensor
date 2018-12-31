@@ -8,7 +8,9 @@ import configargparse
 import logging
 import paho.mqtt.client as mqtt
 
-client = None
+from prometheus_client import CollectorRegistry, Gauge, write_to_textfile
+
+_client = None
 args = None
 
 
@@ -16,14 +18,14 @@ def connect(args):
     """ Connect to the MQTT broker. """
     logging.info("Trying to connect to host {} and topic {} using id {}".format(args.host, args.topic, args.id))
 
-    global client
-    client = mqtt.Client("pir_{}".format(args.id))
+    global _client
+    _client = mqtt.Client("pir_{}".format(args.id))
 
     if args.user:
         logging.info("Connecting as user {}".format(args.user))
-        client.username_pw_set(username=args.user, password=args.password)
+        _client.username_pw_set(username=args.user, password=args.password)
 
-    client.connect(args.host)
+    _client.connect(args.host)
 
 
 def triggered(channel):
@@ -33,7 +35,7 @@ def triggered(channel):
     data['timestamp'] = datetime.datetime.now().isoformat()
 
     logging.debug("Detected motion")
-    client.publish(args.topic, json.dumps(data), qos=1)
+    _client.publish(args.topic, json.dumps(data), qos=1)
 
 
 def parse():
@@ -55,8 +57,8 @@ def cleanup():
     """ Cleans up current state nicely. """
     logging.warning("Bye...")
     GPIO.cleanup()
-    client.loop_stop()
-    client.disconnect()
+    _client.loop_stop()
+    _client.disconnect()
 
 
 def setup_logging(args):
@@ -84,7 +86,7 @@ def run(args):
         GPIO.add_event_detect(args.gpio, GPIO.RISING, callback=triggered)
 
         # loop
-        client.loop_forever()
+        _client.loop_forever()
     except:
         cleanup()
 
