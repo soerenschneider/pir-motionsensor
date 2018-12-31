@@ -17,7 +17,7 @@ def connect(args):
     logging.info("Trying to connect to host {} and topic {} using id {}".format(args.host, args.topic, args.id))
 
     global client
-    client = mqtt.Client(args.id)
+    client = mqtt.Client("pir_{}".format(args.id))
 
     if args.user:
         logging.info("Connecting as user {}".format(args.user))
