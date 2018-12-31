@@ -155,7 +155,7 @@ if __name__ == '__main__':
     args = parse()
 
     setup_logging(args)
-    initialize_prometheus()a
+    initialize_prometheus()
     prepare_sensor(GLOBAL_TOPIC)
 
     connect(args)
