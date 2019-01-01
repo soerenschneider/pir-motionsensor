@@ -50,15 +50,18 @@ def prepare_sensor(name):
 
 
 def on_message(mosq, obj, msg):
-    data = json.loads(msg.payload)
-    if not "client" in data:
-        return
+    try:
+        payload=str(msg.payload.decode("utf-8","ignore"))
+        data = json.loads(payload)
+        if not "client" in data:
+            return
 
-    client_id = data["client"]
-    prepare_sensor(client_id)
-    stash[client_id][0].increment()
-    stash[GLOBAL_TOPIC][0].increment()
-
+        client_id = data["client"]
+        prepare_sensor(client_id)
+        stash[client_id][0].increment()
+        stash[GLOBAL_TOPIC][0].increment()
+    except Exception as e: 
+        print(e)
 
 def connect(args):
     """ Connect to the MQTT broker. """
