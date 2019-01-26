@@ -8,7 +8,6 @@ import configargparse
 import logging
 import paho.mqtt.client as mqtt
 
-from prometheus_client import CollectorRegistry, Gauge, write_to_textfile
 
 _client = None
 args = None

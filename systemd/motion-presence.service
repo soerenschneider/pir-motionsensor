@@ -1,0 +1,13 @@
+[Unit]
+Description=motion presence
+After=syslog.target network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/motion-presence
+ExecStart=/usr/local/bin/motion_presence
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
