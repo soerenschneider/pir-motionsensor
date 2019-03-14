@@ -8,7 +8,7 @@ import configargparse
 import json
 import paho.mqtt.client as mqtt
 
-from prometheus_client import CollectorRegistry, Gauge, write_to_textfile
+from prometheus_client import CollectorRegistry, Gauge, start_http_server
 
 args = None
 stash = {}
@@ -76,14 +76,13 @@ def connect(args):
     client.on_message=on_message
 
 
-def initialize_prometheus():
-    global _registry
-    _registry = CollectorRegistry()
+def initialize_prometheus(port):
+    start_http_server(port)
 
     global _gauge_events, _gauge_probability, _gauge_timestamp
-    _gauge_events = Gauge('sensors_pir_events', 'Temperature in degrees celsius', ['client'], registry=_registry)
-    _gauge_probability = Gauge('sensors_pir_probability', 'Probability', ['client'], registry=_registry)
-    _gauge_timestamp = Gauge('sensors_pir_timestamp', 'Timestamp of last measurement', ['client'], registry=_registry)
+    _gauge_events = Gauge('sensors_pir_events', 'Temperature in degrees celsius', ['client'])
+    _gauge_probability = Gauge('sensors_pir_probability', 'Probability', ['client'])
+    _gauge_timestamp = Gauge('sensors_pir_timestamp', 'Timestamp of last measurement', ['client'])
 
 
 def calc_probability(values):
@@ -96,12 +95,10 @@ def calc_probability(values):
     return min(1., p / minutes)
 
 
-def write_nodeexporter(label, data):
+def write_metrics(label, data):
     _gauge_events.labels(label).set(data["events"])
     _gauge_probability.labels(label).set(data["probability"])
     _gauge_timestamp.labels(label).set(int(time.time()))
-
-    write_to_textfile(args.nodeexporter, _registry)
 
 
 def historize():
@@ -127,19 +124,20 @@ def historize():
         topic = args.destination.format(client_id)
         client.publish(topic, json.dumps(data), qos=1)
 
-        write_nodeexporter(client_id, data)
+        write_metrics(client_id, data)
 
 
 def parse():
     """ Argparse stuff happens here. """
-    parser = configargparse.ArgumentParser(prog='pir-sensor-reader')
+    parser = configargparse.ArgumentParser(prog='motion-presence')
 
-    parser.add_argument('--host', action="store", env_var="PRE_HOST", required=True)
-    parser.add_argument('--user', '-u', action="store")
-    parser.add_argument('--password', action="store")
-    parser.add_argument('--nodeexporter', action="store", env_var="PRE_NODEEXPORTER", default="/var/lib/node_exporter/motion.prom")
-    parser.add_argument('--topic', '-t', action="store", default='house/sensors/+/motion')
-    parser.add_argument('--destination', '-d', action="store", default='house/presence/{}')
+    parser.add_argument('--host', action="store", env_var="MOTION_HOST", required=True)
+    parser.add_argument('--user', '-u', action="store", env_var="MOTION_USER")
+    parser.add_argument('--password', action="store", env_var="MOTION_PASSWORD")
+#    parser.add_argument('--nodeexporter', action="store", env_var="MOTION_NODEEXPORTER", default="/var/lib/node_exporter/motion.prom")
+    parser.add_argument("--prometheus-port", dest="prometheus_port", type=int, default=8080, env_var="MOTION_PROM_PORT")
+    parser.add_argument('--topic', '-t', action="store", env_var="MOTION_TOPIC", default='house/sensors/+/motion')
+    parser.add_argument('--destination', '-d', action="store", env_var="MOTION_DEST", default='house/presence/{}')
     parser.add_argument('--verbose', action="store_true")
 
     return parser.parse_args()
@@ -158,7 +156,7 @@ if __name__ == '__main__':
     args = parse()
 
     setup_logging(args)
-    initialize_prometheus()
+    initialize_prometheus(args.prometheus_port)
     prepare_sensor(GLOBAL_TOPIC)
 
     connect(args)
