@@ -5,6 +5,7 @@ import configargparse
 import logging
 
 from prometheus_client import start_http_server
+from pir import PirSensor
 
 def parse():
     """ Argparse stuff happens here. """
@@ -12,11 +13,7 @@ def parse():
 
     parser.add_argument('--id', action="store", env_var="PIR_ID", required=True)
     parser.add_argument('--gpio', action="store", type=int, default=4)
-    #parser.add_argument('--host', action="store", env_var="PIR_HOST", required=True)
-    #parser.add_argument('--user', action="store", env_var="PIR_USER")
-    #parser.add_argument('--topic', action="store", default='house/sensors/{}/motion')
     parser.add_argument('--prom-listen-port', action='store', type=int, env_var='PROM_LISTEN_PORT', default=9191)
-    parser.add_argument('--password', action="store", env_var="PIR_PASS")
     parser.add_argument('--verbose', action="store_true")
     
     return parser.parse_args()
@@ -44,4 +41,5 @@ if __name__ == '__main__':
     setup_logging(args)
     print_config(args)
     setup_prometheus(args)
-    time.sleep(600)
+    p = PirSensor(args)
+    p.run()

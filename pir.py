@@ -1,52 +1,59 @@
 #!/usr/bin/env python3
 
 import RPi.GPIO as GPIO
-import smbus
 import time
 import datetime
 import logging
 
-class PirSensor:
-    prefix = 'sensors_pir'
+from prometheus_client import Counter, Gauge
 
+class PirSensor:
     def __init__(self, args, callbacks=None):
+        self._gpio = args.gpio
         self._id = args.id
 
-        if callbacks:
-            self.callbacks = callbacks
+        if not callbacks:
+            callbacks = list()
+        self.callbacks = callbacks
 
-        self._counter = Counter(f'{prefix}_motions_detected_total', 'Counter of detected motions', ['location'], registry=_registry)
-        self._heartbeat = Gauge(f'{prefix}_timestamp_seconds', 'Timestamp of last detected motion', ['location'], registry=_registry)
+        self._counter = Counter('sensor_pir_motions_detected_total', 'Counter of detected motions', ['location'])
+        self._heartbeat = Gauge('sensor_pir_timestamp_seconds', 'Timestamp of last detected motion', ['location'])
 
     def triggered(self, channel):
         """ Callback when the sensor is triggered. """
         logging.debug("Detected motion")
 
         # set metrics
-        self._counter.labels(location=self.id).inc()
-        self._heartbeat.set_to_current_time()
+        self._counter.labels(location=self._id).inc()
+        self._heartbeat.labels(location=self._id).set_to_current_time()
 
         data = dict()
         data['client'] = self._id
 
         try:
-            for callback in callbacks:
-                callback.triggered(data)
+            for callback in self.callbacks:
+                callback.trigger(data)
         except Exception as e:
             logging.error("Error invoking callback: %s", e)
 
-    def run(self, args):
+    def run(self):
         try:
             logging.info("Initializing GPIO...")
             GPIO.setmode(GPIO.BCM)
-            GPIO.setup(args.gpio, GPIO.IN)
-            while GPIO.input(args.gpio) != 0:
+            GPIO.setup(self._gpio, GPIO.IN)
+            while GPIO.input(self._gpio) != 0:
                 time.sleep(0.1)
             logging.info("Successfully initialized GPIO!")
 
             # attach callback to GPIO
-            GPIO.add_event_detect(args.gpio, GPIO.RISING, callback=triggered)
-        except:
+            GPIO.add_event_detect(self._gpio, GPIO.RISING, callback=self.triggered)
+
+            while True:
+                time.sleep(60)
+        except KeyboardInterrupt:
+            self.cleanup()
+        except Exception as e:
+            logging.info("Caught error", e)
             self.cleanup()
 
     def cleanup(self):
