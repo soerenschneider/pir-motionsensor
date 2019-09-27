@@ -1,5 +1,3 @@
-fake-rpi
 prometheus_client 
-APScheduler
-paho-mqtt
 configargparse
+RPi.GPIO
