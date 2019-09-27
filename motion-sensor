@@ -1,3 +1,4 @@
 #!/bin/sh
 
-./venv/bin/python3 motionsensor.py "$@"
+DIR=$(dirname "$(readlink -f "$0")")
+${DIR}/venv/bin/python3 ${DIR}/motionsensor.py "$@"
