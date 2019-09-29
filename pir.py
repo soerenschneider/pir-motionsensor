@@ -16,8 +16,8 @@ class PirSensor:
             callbacks = list()
         self.callbacks = callbacks
 
-        self._counter = Counter('sensor_pir_motions_detected_total', 'Counter of detected motions', ['location'])
-        self._heartbeat = Gauge('sensor_pir_timestamp_seconds', 'Timestamp of last detected motion', ['location'])
+        self._counter = Counter('iot_sensors_pir_triggered_total', 'Counter of detected motions', ['location'])
+        self._heartbeat = Gauge('iot_sensors_pir_timestamp_seconds', 'Timestamp of last detected motion', ['location'])
 
     def triggered(self, channel):
         """ Callback when the sensor is triggered. """
