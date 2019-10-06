@@ -25,7 +25,7 @@ class MqttBackend:
         self.publish(data)
 
     def publish(self, data):
-        logging.debug(f"Publishing '{data}' to {self._topic}")
+        logging.debug(f"Publishing '{}' to {}", data, self._topic)
         try:
             self._client.publish(self._topic, data)
         except Exception as e:
