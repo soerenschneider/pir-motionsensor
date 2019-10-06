@@ -4,6 +4,7 @@ import RPi.GPIO as GPIO
 import time
 import datetime
 import logging
+import json
 
 from prometheus_client import Counter, Gauge
 
@@ -29,10 +30,11 @@ class PirSensor:
 
         data = dict()
         data['client'] = self._id
+        json_data = json.dumps(data, ensure_ascii=False)
 
         try:
             for callback in self.callbacks:
-                callback.trigger(data)
+                callback.trigger(json_data)
         except Exception as e:
             logging.error("Error invoking callback: %s", e)
 
