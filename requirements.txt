@@ -1,3 +1,4 @@
+paho-mqtt
 prometheus_client 
 configargparse
 RPi.GPIO
