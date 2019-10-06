@@ -21,7 +21,7 @@ class MqttBackend:
         self.connect()
 
     def on_connect(self, client, userdata, flags, rc):
-        logging.info("Connected with result code ", str(rc))
+        logging.info("Connected with result code %s", str(rc))
         self._prom_reconnects.labels(self._location).inc()
 
     def trigger(self, data):
@@ -32,7 +32,7 @@ class MqttBackend:
         try:
             self._client.publish(self._topic, data)
         except Exception as e:
-            logging.error("Error while publishing message to topic", self._topic)
+            logging.error("Error while publishing message to topic %s: %s", self._topic, e)
             self._prom_msg_error_cnt.labels(self._location).inc()
 
     def connect(self):
@@ -41,4 +41,4 @@ class MqttBackend:
 
         self._client.connect_async(self._host, self._port, 60)
         self._client.loop_start()
-        logging.info("Async connecting to {}", self._host)
+        logging.info("Async connecting to %s", self._host)
