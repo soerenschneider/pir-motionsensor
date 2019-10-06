@@ -5,7 +5,7 @@ import logging
 from prometheus_client import Counter
 
 class MqttBackend:
-    def __init__(self, host, location, topic="/sensors/pir/{}", port=1883):
+    def __init__(self, host, location, topic, port=1883):
         logging.info("Initializing MQTT backend...")
         self._host = host
         self._location = location
