@@ -25,7 +25,7 @@ class MqttBackend:
         self._prom_reconnects.labels(self._location).inc()
 
     def trigger(self, data):
-        self.publish(data)
+        self.publish("ON")
 
     def publish(self, data):
         logging.debug("Publishing '%s' to %s", data, self._topic)
