@@ -53,7 +53,9 @@ if __name__ == '__main__':
     setup_prometheus(args)
 
     callbacks = list()
-    callbacks.append(initialize_mqtt(args))
+    mqtt_backend = initialize_mqtt(args)
+    if mqtt_backend:
+        callbacks.append(mqtt_backend)
     
     p = PirSensor(args, callbacks=callbacks)
     p.run()
