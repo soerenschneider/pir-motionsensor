@@ -2,8 +2,11 @@ import paho.mqtt.client as mqtt
 import time
 import logging
 
+from prometheus_client import Counter
+
 class MqttBackend:
     def __init__(self, host, location, topic="/sensors/pir/{}", port=1883):
+        logging.info("Initializing MQTT backend...")
         self._host = host
         self._location = location
         self._port = port
@@ -35,3 +38,4 @@ class MqttBackend:
     def connect(self):
         self._client.connect_async(self._host, self._port, 60)
         self._client.loop_start()
+        logging.info("Async connecting to {}", self._host)
