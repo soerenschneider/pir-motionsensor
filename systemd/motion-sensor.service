@@ -1,12 +1,15 @@
 [Unit]
 Description=PIR motion sensor
 After=syslog.target network.target
+StartLimitIntervalSec=3600
+StartLimitBurst=720
 
 [Service]
 Type=simple
 EnvironmentFile=/etc/default/motion-sensor
 ExecStart=/usr/local/bin/motion-sensor
 Restart=always
+RestartSec=5
 User=pi
 
 [Install]
